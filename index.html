@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Anatomy AR - Pembelajaran Anatomi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            background: #0a0e27;
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .glass {
+            background: rgba(30, 58, 95, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .neon-glow {
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.5), 0 0 40px rgba(0, 210, 255, 0.3);
+        }
+        
+        .neon-text {
+            text-shadow: 0 0 10px rgba(0, 210, 255, 0.8);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+        }
+        
+        .scan-line {
+            animation: scan 2s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        
+        .pulse-ring {
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        
+        .float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .rotate-3d {
+            animation: rotate3d 20s linear infinite;
+        }
+        
+        @keyframes rotate3d {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(360deg); }
+        }
+        
+        .slide-up {
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .heart-beat {
+            animation: heartbeat 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .breathing {
+            animation: breathe 4s ease-in-out infinite;
+        }
+        
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+        
+        #ar-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        
+        .organ-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .organ-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.6);
+        }
+        
+        .organ-btn.active {
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.8);
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
+            transition: width 0.5s ease;
+        }
+        
+        .quiz-option {
+            transition: all 0.2s ease;
+        }
+        
+        .quiz-option:hover {
+            transform: translateX(5px);
+            border-color: #00d2ff;
+        }
+        
+        .quiz-option.correct {
+            background: rgba(0, 230, 118, 0.3);
+            border-color: #00e676;
+        }
+        
+        .quiz-option.wrong {
+            background: rgba(255, 23, 68, 0.3);
+            border-color: #ff1744;
+        }
+        
+        .hidden { display: none !important; }
+        
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            z-index: 10;
+            background: #0a0e27;
+        }
+        
+        .ar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .body-model {
+            width: 200px;
+            height: 400px;
+            position: relative;
+            transform-style: preserve-3d;
+        }
+        
+        .body-part {
+            position: absolute;
+            background: linear-gradient(135deg, rgba(0, 210, 255, 0.3), rgba(58, 123, 213, 0.3));
+            border: 2px solid rgba(0, 210, 255, 0.6);
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .marker-frame {
+            border: 2px dashed rgba(0, 210, 255, 0.5);
+            animation: markerPulse 2s infinite;
+        }
+        
+        @keyframes markerPulse {
+            0%, 100% { border-color: rgba(0, 210, 255, 0.5); }
+            50% { border-color: rgba(0, 210, 255, 1); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SCREEN: HOME -->
+    <div id="screen-home" class="screen">
+        <div class="min-h-screen pb-20">
+            <!-- Header -->
+            <div class="glass sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
+                <button onclick="toggleMenu()" class="text-2xl text-cyan-400 hover:text-cyan-300 transition">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="text-xl font-bold neon-text tracking-wider">ANATOMY AR</h1>
+                <div class="flex gap-4">
+                    <button class="text-cyan-400 hover:text-cyan-300"><i class="fas fa-bell"></i></button>
+                    <button class="text-cyan-400 hover:text-cyan-300"><i class="fas fa-user-circle"></i></button>
+                </div>
+            </div>
+
+            <!-- Hero Section -->
+            <div class="px-6 py-8">
+                <div class="mb-6">
+                    <p class="text-gray-400 text-sm mb-1">Selamat datang kembali,</p>
+                    <h2 class="text-2xl font-bold">Dr. Future! 👋</h2>
+                </div>
+
+                <!-- 3D Body Preview -->
+                <div class="relative h-80 mb-8 flex items-center justify-center">
+                    <div class="absolute inset-0 bg-gradient-to-b from-cyan-500/20 to-transparent rounded-3xl"></div>
+                    <div class="body-model rotate-3d float">
+                        <div class="body-part w-16 h-16 rounded-full top-0 left-1/2 transform -translate-x-1/2 flex items-center justify-center">
+                            <i class="fas fa-brain text-2xl text-cyan-400"></i>
+                        </div>
+                        <div class="body-part w-24 h-32 rounded-2xl top-20 left-1/2 transform -translate-x-1/2 flex items-center justify-center">
+                            <div class="heart-beat text-red-500 text-3xl"><i class="fas fa-heart"></i></div>
+                        </div>
+                        <div class="body-part w-8 h-24 rounded-full top-20 -left-4 transform rotate-12"></div>
+                        <div class="body-part w-8 h-24 rounded-full top-20 -right-4 transform -rotate-12"></div>
+                        <div class="body-part w-20 h-40 rounded-2xl top-52 left-1/2 transform -translate-x-1/2"></div>
+                        <div class="body-part w-10 h-48 rounded-full top-64 -left-2"></div>
+                        <div class="body-part w-10 h-48 rounded-full top-64 -right-2"></div>
+                    </div>
+                    
+                    <!-- Scan Button Overlay -->
+                    <button onclick="showScreen('scan')" class="absolute bottom-0 glass px-8 py-4 rounded-full neon-glow gradient-bg font-bold text-lg transform hover:scale-105 transition flex items-center gap-3">
+                        <i class="fas fa-camera text-2xl"></i>
+                        <span>SCAN SEKARANG</span>
+                    </button>
+                </div>
+
+                <!-- Progress -->
+                <div class="glass rounded-2xl p-6 mb-6">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-sm text-gray-400">Progress Belajar</span>
+                        <span class="text-cyan-400 font-bold" id="total-progress">65%</span>
+                    </div>
+                    <div class="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
+                        <div class="progress-bar h-full rounded-full" style="width: 65%"></div>
+                    </div>
+                    <div class="mt-4 flex justify-between text-xs text-gray-400">
+                        <span>12 Sistem dipelajari</span>
+                        <span>Target: 20</span>
+                    </div>
+                </div>
+
+                <!-- Quick Menu -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <button onclick="showScreen('menu')" class="glass rounded-2xl p-6 text-left hover:bg-cyan-900/30 transition group">
+                        <div class="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                            <i class="fas fa-book-medical text-xl"></i>
+                        </div>
+                        <h3 class="font-bold mb-1">Materi</h3>
+                        <p class="text-xs text-gray-400">12 Topik tersedia</p>
+                    </button>
+                    
+                    <button onclick="showScreen('quiz')" class="glass rounded-2xl p-6 text-left hover:bg-cyan-900/30 transition group">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                            <i class="fas fa-gamepad text-xl"></i>
+                        </div>
+                        <h3 class="font-bold mb-1">Kuis</h3>
+                        <p class="text-xs text-gray-400">Uji pengetahuanmu</p>
+                    </button>
+                    
+                    <button onclick="showAR()" class="glass rounded-2xl p-6 text-left hover:bg-cyan-900/30 transition group">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-cyan-500 flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                            <i class="fas fa-cube text-xl"></i>
+                        </div>
+                        <h3 class="font-bold mb-1">Mode AR</h3>
+                        <p class="text-xs text-gray-400">Eksplorasi 3D</p>
+                    </button>
+                    
+                    <button class="glass rounded-2xl p-6 text-left hover:bg-cyan-900/30 transition group">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                            <i class="fas fa-trophy text-xl"></i>
+                        </div>
+                        <h3 class="font-bold mb-1">Peringkat</h3>
+                        <p class="text-xs text-gray-400">Top #124</p>
+                    </button>
+                </div>
+
+                <!-- Daily Challenge -->
+                <div class="glass rounded-2xl p-6 border border-yellow-500/30">
+                    <div class="flex items-center gap-3 mb-3">
+                        <i class="fas fa-fire text-yellow-400 text-2xl"></i>
+                        <div>
+                            <h3 class="font-bold">Tantangan Harian</h3>
+                            <p class="text-xs text-gray-400">Identifikasi 5 organ dalam 3 menit</p>
+                        </div>
+                    </div>
+                    <button onclick="showScreen('quiz')" class="w-full py-3 rounded-xl bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 font-semibold hover:bg-yellow-500/30 transition">
+                        Mulai Tantangan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN: MENU -->
+    <div id="screen-menu" class="screen hidden">
+        <div class="min-h-screen pb-20">
+            <div class="glass sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
+                <button onclick="showScreen('home')" class="text-2xl text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h1 class="text-lg font-bold">Sistem Tubuh</h1>
+                <button class="text-cyan-400"><i class="fas fa-search"></i></button>
+            </div>
+
+            <div class="px-6 py-6">
+                <h2 class="text-2xl font-bold mb-6">🔬 Sistem Tubuh Manusia</h2>
+                
+                <div class="space-y-4" id="system-list">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN: MATERI -->
+    <div id="screen-materi" class="screen hidden">
+        <div class="min-h-screen pb-24">
+            <div class="glass sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
+                <button onclick="showScreen('menu')" class="text-2xl text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h1 class="text-lg font-bold truncate" id="materi-title">Detail Anatomi</h1>
+                <div class="flex gap-3">
+                    <button class="text-cyan-400"><i class="fas fa-volume-up"></i></button>
+                    <button class="text-cyan-400"><i class="fas fa-bookmark"></i></button>
+                </div>
+            </div>
+
+            <div class="px-6 py-6">
+                <!-- 3D Model Viewer -->
+                <div class="relative h-64 mb-6 glass rounded-2xl overflow-hidden">
+                    <div id="model-viewer" class="w-full h-full flex items-center justify-center">
+                        <div class="text-center">
+                            <div class="text-6xl mb-4 animate-pulse" id="materi-icon">💪</div>
+                            <p class="text-sm text-gray-400">Ketuk untuk interaksi 3D</p>
+                        </div>
+                    </div>
+                    <div class="absolute bottom-4 left-4 right-4 flex justify-center gap-4">
+                        <button class="w-10 h-10 rounded-full glass flex items-center justify-center hover:bg-cyan-500/30" onclick="rotateModel('left')">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                        <button class="w-10 h-10 rounded-full glass flex items-center justify-center hover:bg-cyan-500/30" onclick="toggleLayer()">
+                            <i class="fas fa-layer-group"></i>
+                        </button>
+                        <button class="w-10 h-10 rounded-full glass flex items-center justify-center hover:bg-cyan-500/30" onclick="rotateModel('right')">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Info Card -->
+                <div class="glass rounded-2xl p-6 mb-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <p class="text-cyan-400 text-sm mb-1" id="materi-latin">Latin Name</p>
+                            <h2 class="text-2xl font-bold" id="materi-name">Nama Organ</h2>
+                        </div>
+                        <span class="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs" id="materi-status">Aktif</span>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="font-semibold mb-2 flex items-center gap-2">
+                                <i class="fas fa-map-marker-alt text-cyan-400"></i> Lokasi
+                            </h4>
+                            <p class="text-gray-300 text-sm" id="materi-location">Deskripsi lokasi...</p>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-semibold mb-2 flex items-center gap-2">
+                                <i class="fas fa-cogs text-cyan-400"></i> Fungsi
+                            </h4>
+                            <p class="text-gray-300 text-sm" id="materi-function">Deskripsi fungsi...</p>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-semibold mb-2 flex items-center gap-2">
+                                <i class="fas fa-link text-cyan-400"></i> Struktur Terkait
+                            </h4>
+                            <div class="flex flex-wrap gap-2" id="materi-related">
+                                <!-- Generated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="showAR()" class="glass py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-cyan-500/20 transition">
+                        <i class="fas fa-cube text-cyan-400"></i>
+                        <span>Lihat AR</span>
+                    </button>
+                    <button onclick="showScreen('quiz')" class="glass py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-cyan-500/20 transition">
+                        <i class="fas fa-question-circle text-cyan-400"></i>
+                        <span>Kuis</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN: SCAN -->
+    <div id="screen-scan" class="screen hidden bg-black">
+        <div class="relative h-full flex flex-col">
+            <!-- Camera View Simulation -->
+            <div class="flex-1 relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-b from-gray-900 to-black flex items-center justify-center">
+                    <div class="text-center">
+                        <div class="w-64 h-64 border-2 border-cyan-400/50 rounded-lg marker-frame relative mb-8 mx-auto">
+                            <div class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyan-400"></div>
+                            <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyan-400"></div>
+                            <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-cyan-400"></div>
+                            <div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyan-400"></div>
+                            
+                            <!-- Scan Line -->
+                            <div class="absolute top-0 left-0 right-0 h-0.5 bg-cyan-400 shadow-[0_0_10px_rgba(0,210,255,1)] scan-line"></div>
+                        </div>
+                        <p class="text-cyan-400 font-semibold mb-2">Mencari marker...</p>
+                        <p class="text-gray-400 text-sm">Arahkan kamera ke tubuh manusia</p>
+                    </div>
+                </div>
+                
+                <!-- Scanning Dots -->
+                <div class="absolute bottom-32 left-1/2 transform -translate-x-1/2 flex gap-2">
+                    <div class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
+                    <div class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" style="animation-delay: 0.2s"></div>
+                    <div class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" style="animation-delay: 0.4s"></div>
+                </div>
+            </div>
+
+            <!-- Tips -->
+            <div class="glass p-6 rounded-t-3xl">
+                <h3 class="font-bold mb-3 flex items-center gap-2">
+                    <i class="fas fa-lightbulb text-yellow-400"></i> Tips Scanning
+                </h3>
+                <ul class="text-sm text-gray-300 space-y-2 mb-6">
+                    <li class="flex items-center gap-2"><i class="fas fa-check text-green-400 text-xs"></i> Pastikan pencahayaan cukup terang</li>
+                    <li class="flex items-center gap-2"><i class="fas fa-check text-green-400 text-xs"></i> Jarak optimal: 30-50 cm</li>
+                    <li class="flex items-center gap-2"><i class="fas fa-check text-green-400 text-xs"></i> Tunggu garis hijau muncul</li>
+                </ul>
+                
+                <div class="flex gap-4">
+                    <button onclick="showScreen('home')" class="flex-1 py-3 rounded-xl glass text-gray-400 hover:text-white transition">
+                        Batal
+                    </button>
+                    <button onclick="simulateScan()" class="flex-1 py-3 rounded-xl gradient-bg font-semibold neon-glow">
+                        Scan Manual
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN: AR MODE -->
+    <div id="screen-ar" class="screen hidden bg-black">
+        <canvas id="ar-canvas"></canvas>
+        
+        <!-- AR Overlay -->
+        <div class="ar-overlay flex flex-col justify-between p-6">
+            <!-- Header -->
+            <div class="flex justify-between items-start">
+                <button onclick="exitAR()" class="w-10 h-10 rounded-full glass flex items-center justify-center text-white hover:bg-red-500/50 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+                
+                <div class="glass px-4 py-2 rounded-full flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                    <span class="text-xs font-semibold">Tracking Aktif</span>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button class="w-10 h-10 rounded-full glass flex items-center justify-center text-white hover:bg-cyan-500/50 transition">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button class="w-10 h-10 rounded-full glass flex items-center justify-center text-white hover:bg-cyan-500/50 transition">
+                        <i class="fas fa-camera"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Center Reticle -->
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                <div class="w-12 h-12 border-2 border-cyan-400/50 rounded-full flex items-center justify-center">
+                    <div class="w-1 h-1 bg-cyan-400 rounded-full"></div>
+                </div>
+            </div>
+
+            <!-- Organ Info (Floating) -->
+            <div id="ar-info" class="glass rounded-2xl p-4 mb-4 max-w-xs ml-auto transform translate-x-full transition-transform duration-300">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-full gradient-bg flex items-center justify-center text-xl" id="ar-organ-icon">🫀</div>
+                    <div>
+                        <h3 class="font-bold text-sm" id="ar-organ-name">Jantung</h3>
+                        <p class="text-xs text-cyan-400">72 bpm</p>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-300" id="ar-organ-desc">Organ vital yang memompa darah ke seluruh tubuh.</p>
+                <div class="mt-3 flex gap-2">
+                    <button class="flex-1 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 text-xs hover:bg-cyan-500/30 transition">
+                        <i class="fas fa-info-circle"></i> Detail
+                    </button>
+                    <button class="flex-1 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 text-xs hover:bg-cyan-500/30 transition">
+                        <i class="fas fa-volume-up"></i> Audio
+                    </button>
+                </div>
+            </div>
+
+            <!-- Layer Controls -->
+            <div class="glass rounded-2xl p-4 mb-4">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs text-gray-400">Layer Visualisasi</span>
+                    <span class="text-xs text-cyan-400" id="current-layer">Organ Dalam</span>
+                </div>
+                <div class="flex gap-2 overflow-x-auto pb-2">
+                    <button onclick="setLayer('skin')" class="organ-btn flex-shrink-0 px-4 py-2 rounded-lg glass text-xs flex items-center gap-2">
+                        <span>🔲</span> Kulit
+                    </button>
+                    <button onclick="setLayer('muscle')" class="organ-btn flex-shrink-0 px-4 py-2 rounded-lg glass text-xs flex items-center gap-2">
+                        <span>💪</span> Otot
+                    </button>
+                    <button onclick="setLayer('organ')" class="organ-btn active flex-shrink-0 px-4 py-2 rounded-lg glass text-xs flex items-center gap-2">
+                        <span>🫀</span> Organ
+                    </button>
+                    <button onclick="setLayer('bone')" class="organ-btn flex-shrink-0 px-4 py-2 rounded-lg glass text-xs flex items-center gap-2">
+                        <span>🦴</span> Tulang
+                    </button>
+                    <button onclick="setLayer('nerve')" class="organ-btn flex-shrink-0 px-4 py-2 rounded-lg glass text-xs flex items-center gap-2">
+                        <span>⚡</span> Saraf
+                    </button>
+                </div>
+            </div>
+
+            <!-- Organ Selector -->
+            <div class="glass rounded-2xl p-4">
+                <div class="flex gap-3 overflow-x-auto pb-2" id="ar-organ-list">
+                    <button onclick="selectOrgan('heart')" class="organ-btn flex-shrink-0 w-14 h-14 rounded-xl glass flex flex-col items-center justify-center gap-1 hover:scale-110 transition">
+                        <span class="text-2xl">🫀</span>
+                    </button>
+                    <button onclick="selectOrgan('lungs')" class="organ-btn flex-shrink-0 w-14 h-14 rounded-xl glass flex flex-col items-center justify-center gap-1 hover:scale-110 transition">
+                        <span class="text-2xl">🫁</span>
+                    </button>
+                    <button onclick="selectOrgan('brain')" class="organ-btn flex-shrink-0 w-14 h-14 rounded-xl glass flex flex-col items-center justify-center gap-1 hover:scale-110 transition">
+                        <span class="text-2xl">🧠</span>
+                    </button>
+                    <button onclick="selectOrgan('stomach')" class="organ-btn flex-shrink-0 w-14 h-14 rounded-xl glass flex flex-col items-center justify-center gap-1 hover:scale-110 transition">
+                        <span class="text-2xl">🫃</span>
+                    </button>
+                    <button onclick="selectOrgan('liver')" class="organ-btn flex-shrink-0 w-14 h-14 rounded-xl glass flex flex-col items-center justify-center gap-1 hover:scale-110 transition">
+                        <span class="text-2xl">🫁</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN: QUIZ -->
+    <div id="screen-quiz" class="screen hidden">
+        <div class="min-h-screen pb-20">
+            <div class="glass sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
+                <button onclick="showScreen('home')" class="text-2xl text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-clock text-cyan-400"></i>
+                    <span class="font-mono font-bold" id="quiz-timer">02:45</span>
+                </div>
+                <div class="text-cyan-400"><i class="fas fa-fire"></i> <span id="quiz-streak">3</span></div>
+            </div>
+
+            <div class="px-6 py-6">
+                <!-- Progress -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm text-gray-400">Soal <span id="current-q">5</span>/10</span>
+                        <span class="text-sm text-cyan-400">Skor: <span id="quiz-score">450</span></span>
+                    </div>
+                    <div class="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div class="progress-bar h-full rounded-full" style="width: 50%"></div>
+                    </div>
+                </div>
+
+                <!-- Question Card -->
+                <div class="glass rounded-2xl p-6 mb-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-xs">Anatomi</span>
+                        <span class="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 text-xs">Sedang</span>
+                    </div>
+                    
+                    <div class="h-48 bg-gradient-to-br from-cyan-900/50 to-blue-900/50 rounded-xl flex items-center justify-center mb-4 relative overflow-hidden">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="w-32 h-32 rounded-full bg-red-500/30 animate-pulse flex items-center justify-center">
+                                <i class="fas fa-heart text-4xl text-red-400 heart-beat"></i>
+                            </div>
+                            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                                <div class="w-4 h-4 bg-yellow-400 rounded-full shadow-[0_0_20px_rgba(250,204,21,1)]"></div>
+                            </div>
+                        </div>
+                        <p class="absolute bottom-2 text-xs text-gray-400">Ketuk untuk perbesar</p>
+                    </div>
+                    
+                    <h3 class="text-lg font-semibold leading-relaxed" id="question-text">
+                        Struktur otot manakah yang ditunjukkan oleh penanda merah pada gambar di atas?
+                    </h3>
+                </div>
+
+                <!-- Options -->
+                <div class="space-y-3" id="quiz-options">
+                    <button onclick="selectAnswer(this, 'A')" class="quiz-option w-full glass rounded-xl p-4 text-left flex items-center gap-4 border-2 border-transparent hover:border-cyan-400/50">
+                        <span class="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-sm">A</span>
+                        <span>Otot Deltoid (Bahu)</span>
+                    </button>
+                    
+                    <button onclick="selectAnswer(this, 'B')" class="quiz-option w-full glass rounded-xl p-4 text-left flex items-center gap-4 border-2 border-transparent hover:border-cyan-400/50">
+                        <span class="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-sm">B</span>
+                        <span>Otot Biceps Brachii (Lengan Atas Depan)</span>
+                    </button>
+                    
+                    <button onclick="selectAnswer(this, 'C')" class="quiz-option w-full glass rounded-xl p-4 text-left flex items-center gap-4 border-2 border-transparent hover:border-cyan-400/50">
+                        <span class="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-sm">C</span>
+                        <span>Otot Triceps Brachii (Lengan Atas Belakang)</span>
+                    </button>
+                    
+                    <button onclick="selectAnswer(this, 'D')" class="quiz-option w-full glass rounded-xl p-4 text-left flex items-center gap-4 border-2 border-transparent hover:border-cyan-400/50">
+                        <span class="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-sm">D</span>
+                        <span>Otot Pectoralis Major (Dada)</span>
+                    </button>
+                </div>
+
+                <!-- Explanation (Hidden initially) -->
+                <div id="explanation" class="hidden mt-6 glass rounded-xl p-4 border border-green-500/30">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-check-circle text-green-400 mt-1"></i>
+                        <div>
+                            <h4 class="font-semibold text-green-400 mb-1">Benar!</h4>
+                            <p class="text-sm text-gray-300" id="explanation-text">
+                                Biceps brachii terletak di bagian depan lengan atas dan berfungsi untuk fleksi siku serta supinasi lengan bawah.
+                            </p>
+                        </div>
+                    </div>
+                    <button onclick="nextQuestion()" class="mt-4 w-full py-3 rounded-xl gradient-bg font-semibold">
+                        Lanjut <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+
+                <!-- Actions -->
+                <div class="mt-6 flex gap-4">
+                    <button class="flex-1 py-3 rounded-xl glass text-gray-400 hover:text-white transition flex items-center justify-center gap-2">
+                        <i class="fas fa-lightbulb"></i> Bantuan
+                    </button>
+                    <button class="flex-1 py-3 rounded-xl glass text-gray-400 hover:text-white transition flex items-center justify-center gap-2">
+                        <i class="fas fa-forward"></i> Lewati
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <div class="fixed bottom-0 left-0 right-0 glass border-t border-cyan-500/20 px-6 py-3 flex justify-around items-center z-50">
+        <button onclick="showScreen('home')" class="flex flex-col items-center gap-1 text-cyan-400">
+            <i class="fas fa-home text-xl"></i>
+            <span class="text-xs">Home</span>
+        </button>
+        <button onclick="showScreen('menu')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-cyan-400 transition">
+            <i class="fas fa-book text-xl"></i>
+            <span class="text-xs">Materi</span>
+        </button>
+        <button onclick="showScreen('scan')" class="flex flex-col items-center gap-1 -mt-8">
+            <div class="w-14 h-14 rounded-full gradient-bg neon-glow flex items-center justify-center text-2xl transform hover:scale-110 transition">
+                <i class="fas fa-camera"></i>
+            </div>
+        </button>
+        <button onclick="showScreen('quiz')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-cyan-400 transition">
+            <i class="fas fa-gamepad text-xl"></i>
+            <span class="text-xs">Kuis</span>
+        </button>
+        <button onclick="showAR()" class="flex flex-col items-center gap-1 text-gray-400 hover:text-cyan-400 transition">
+            <i class="fas fa-cube text-xl"></i>
+            <span class="text-xs">AR</span>
+        </button>
+    </div>
+
+    <script>
+        // Data Sistem Tubuh
+        const bodySystems = [
+            {
+                id: 'musculoskeletal',
+                name: 'Sistem Muskuloskeletal',
+                icon: '🦴',
+                color: 'from-amber-500 to-orange-600',
+                progress: 80,
+                items: ['Tulang & Sendi', 'Otot-otot Utama', 'Gerakan Tubuh'],
+                details: {
+                    latin: 'Systema musculoskeletale',
+                    location: 'Seluruh tubuh - 206 tulang dewasa & 600+ otot',
+                    function: 'Memberi bentuk tubuh, proteksi organ, mobilitas, dan produksi sel darah',
+                    related: ['Tulang Paha', 'Tulang Lengan', 'Otot Quadriceps', 'Otot Deltoid']
+                }
+            },
+            {
+                id: 'cardiovascular',
+                name: 'Sistem Kardiovaskular',
+                icon: '❤️',
+                color: 'from-red-500 to-pink-600',
+                progress: 45,
+                items: ['Jantung & Pembuluh Darah', 'Sirkulasi Darah', 'Denyut Nadi'],
+                details: {
+                    latin: 'Systema cardiovasculare',
+                    location: 'Toraks (jantung) & seluruh tubuh (pembuluh)',
+                    function: 'Mengangkut oksigen, nutrisi, hormon, dan limbah',
+                    related: ['Aorta', 'Vena Cava', 'Koroner', 'Kapurin']
+                }
+            },
+            {
+                id: 'respiratory',
+                name: 'Sistem Respirasi',
+                icon: '🫁',
+                color: 'from-blue-400 to-cyan-500',
+                progress: 30,
+                items: ['Paru-paru', 'Diafragma', 'Mekanisme Pernapasan'],
+                details: {
+                    latin: 'Systema respiratorium',
+                    location: 'Rongga dada (toraks)',
+                    function: 'Pertukaran gas O2 dan CO2, regulasi pH darah',
+                    related: ['Trakea', 'Bronkus', 'Alveoli', 'Pleura']
+                }
+            },
+            {
+                id: 'nervous',
+                name: 'Sistem Saraf',
+                icon: '🧠',
+                color: 'from-purple-500 to-indigo-600',
+                progress: 0,
+                items: ['Otak & Sumsum Tulang', 'Saraf Tepi', 'Refleks'],
+                details: {
+                    latin: 'Systema nervosum',
+                    location: 'Kranium, sumsum tulang belakang, & seluruh tubuh',
+                    function: 'Kontrol koordinasi, pemrosesan informasi, respons stimuli',
+                    related: ['Neuron', 'Sinaps', 'Serebrum', 'Serebelum']
+                }
+            },
+            {
+                id: 'digestive',
+                name: 'Sistem Pencernaan',
+                icon: '🍽️',
+                color: 'from-green-500 to-emerald-600',
+                progress: 10,
+                items: ['Saluran Cerna', 'Organ Aksesori', 'Absorpsi Nutrisi'],
+                details: {
+                    latin: 'Systema digestorium',
+                    location: 'Rongga mulut hingga anus (9m panjang)',
+                    function: 'Digesti makanan, absorpsi nutrisi, eliminasi limbah',
+                    related: ['Esofagus', 'Lambung', 'Usus Halus', 'Hati']
+                }
+            },
+            {
+                id: 'integumentary',
+                name: 'Sistem Integumen',
+                icon: '🛡️',
+                color: 'from-yellow-400 to-orange-400',
+                progress: 60,
+                items: ['Kulit', 'Rambut & Kuku', 'Kelenjar'],
+                details: {
+                    latin: 'Systema integumentarium',
+                    location: 'Lapisan terluar tubuh (1-4mm tebal)',
+                    function: 'Proteksi, regulasi suhu, sensor sentuhan, sintesis vitamin D',
+                    related: ['Epidermis', 'Dermis', 'Hipodermis', 'Melanin']
+                }
+            }
+        ];
+
+        // State
+        let currentSystem = null;
+        let currentQuestion = 0;
+        let quizScore = 0;
+        let arScene = null;
+        let arCamera = null;
+        let arRenderer = null;
+        let arObjects = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSystemList();
+            startQuizTimer();
+        });
+
+        // Navigation
+        function showScreen(screenName) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`screen-${screenName}`).classList.remove('hidden');
+            
+            if (screenName === 'ar') {
+                initAR();
+            } else {
+                stopAR();
+            }
+            
+            window.scrollTo(0, 0);
+        }
+
+        function toggleMenu() {
+            showScreen('menu');
+        }
+
+        // Render System List
+        function renderSystemList() {
+            const container = document.getElementById('system-list');
+            container.innerHTML = bodySystems.map(system => `
+                <div onclick="openSystem('${system.id}')" class="glass rounded-2xl p-5 cursor-pointer hover:bg-cyan-900/20 transition group">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${system.color} flex items-center justify-center text-2xl shadow-lg group-hover:scale-110 transition">
+                                ${system.icon}
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg">${system.name}</h3>
+                                <div class="flex items-center gap-2 text-xs text-gray-400 mt-1">
+                                    ${system.items.map(item => `<span>${item}</span>`).join('<span>•</span>')}
+                                </div>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-500 group-hover:text-cyan-400 transition"></i>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full bg-gradient-to-r ${system.color}" style="width: ${system.progress}%"></div>
+                        </div>
+                        <span class="text-xs font-semibold w-10 text-right">${system.progress}%</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Open System Detail
+        function openSystem(systemId) {
+            currentSystem = bodySystems.find(s => s.id === systemId);
+            if (!currentSystem) return;
+            
+            document.getElementById('materi-title').textContent = currentSystem.name;
+            document.getElementById('materi-icon').textContent = currentSystem.icon;
+            document.getElementById('materi-latin').textContent = currentSystem.details.latin;
+            document.getElementById('materi-name').textContent = currentSystem.name.replace('Sistem ', '');
+            document.getElementById('materi-location').textContent = currentSystem.details.location;
+            document.getElementById('materi-function').textContent = currentSystem.details.function;
+            
+            const relatedContainer = document.getElementById('materi-related');
+            relatedContainer.innerHTML = currentSystem.details.related.map(item => 
+                `<span class="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-xs border border-cyan-500/30">${item}</span>`
+            ).join('');
+            
+            showScreen('materi');
+        }
+
+        // Model Controls
+        let rotation = 0;
+        function rotateModel(direction) {
+            rotation += direction === 'left' ? -45 : 45;
+            document.getElementById('model-viewer').style.transform = `rotateY(${rotation}deg)`;
+        }
+
+        function toggleLayer() {
+            // Simulate layer toggle
+            const viewer = document.getElementById('model-viewer');
+            viewer.style.filter = viewer.style.filter === 'hue-rotate(90deg)' ? '' : 'hue-rotate(90deg)';
+        }
+
+        // AR Functions
+        function showAR() {
+            showScreen('ar');
+        }
+
+        function initAR() {
+            const canvas = document.getElementById('ar-canvas');
+            
+            // Setup Three.js scene
+            arScene = new THREE.Scene();
+            arCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            arRenderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+            arRenderer.setSize(window.innerWidth, window.innerHeight);
+            arRenderer.setPixelRatio(window.devicePixelRatio);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 2);
+            arScene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0x00d2ff, 2);
+            directionalLight.position.set(5, 5, 5);
+            arScene.add(directionalLight);
+            
+            // Create initial organ (Heart)
+            createOrgan('heart');
+            
+            arCamera.position.z = 5;
+            
+            // Animation loop
+            animateAR();
+            
+            // Show info panel
+            setTimeout(() => {
+                document.getElementById('ar-info').classList.remove('translate-x-full');
+            }, 1000);
+        }
+
+        function createOrgan(type) {
+            // Clear existing
+            arObjects.forEach(obj => arScene.remove(obj));
+            arObjects = [];
+            
+            let geometry, material, mesh;
+            
+            switch(type) {
+                case 'heart':
+                    geometry = new THREE.SphereGeometry(1, 32, 32);
+                    geometry.scale(1, 1.2, 0.8);
+                    material = new THREE.MeshPhongMaterial({ 
+                        color: 0xff1744, 
+                        emissive: 0x330000,
+                        shininess: 100,
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    break;
+                case 'lungs':
+                    geometry = new THREE.SphereGeometry(0.8, 32, 32);
+                    material = new THREE.MeshPhongMaterial({ 
+                        color: 0xff69b4, 
+                        emissive: 0x330011,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    // Create two lungs
+                    const leftLung = new THREE.Mesh(geometry, material);
+                    leftLung.position.set(-0.9, 0, 0);
+                    const rightLung = new THREE.Mesh(geometry, material);
+                    rightLung.position.set(0.9, 0, 0);
+                    arScene.add(leftLung);
+                    arScene.add(rightLung);
+                    arObjects.push(leftLung, rightLung);
+                    return;
+                case 'brain':
+                    geometry = new THREE.SphereGeometry(1, 32, 32);
+                    geometry.scale(1.2, 0.9, 1);
+                    material = new THREE.MeshPhongMaterial({ 
+                        color: 0xffb6c1, 
+                        emissive: 0x331111,
+                        transparent: true,
+                        opacity: 0.85
+                    });
+                    break;
+                default:
+                    geometry = new THREE.SphereGeometry(1, 32, 32);
+                    material = new THREE.MeshPhongMaterial({ color: 0x00d2ff });
+            }
+            
+            mesh = new THREE.Mesh(geometry, material);
+            
+            // Add wireframe overlay
+            const wireframe = new THREE.WireframeGeometry(geometry);
+            const line = new THREE.LineSegments(wireframe);
+            line.material.depthTest = false;
+            line.material.opacity = 0.3;
+            line.material.transparent = true;
+            line.material.color = new THREE.Color(0x00d2ff);
+            mesh.add(line);
+            
+            arScene.add(mesh);
+            arObjects.push(mesh);
+            
+            // Add particles
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particlesCount = 200;
+            const posArray = new Float32Array(particlesCount * 3);
+            
+            for(let i = 0; i < particlesCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 6;
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const particlesMaterial = new THREE.PointsMaterial({
+                size: 0.02,
+                color: 0x00d2ff,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+            arScene.add(particlesMesh);
+            arObjects.push(particlesMesh);
+        }
+
+        function animateAR() {
+            if (!arRenderer) return;
+            
+            requestAnimationFrame(animateAR);
+            
+            arObjects.forEach((obj, index) => {
+                if (obj.type === 'Mesh') {
+                    obj.rotation.y += 0.005;
+                    obj.rotation.x += 0.002;
+                    
+                    // Heartbeat effect for heart
+                    if (obj.geometry.type === 'SphereGeometry' && obj.material.color.r > 0.9) {
+                        const scale = 1 + Math.sin(Date.now() * 0.003) * 0.05;
+                        obj.scale.set(scale, scale * 1.2, scale * 0.8);
+                    }
+                } else if (obj.type === 'Points') {
+                    obj.rotation.y -= 0.001;
+                }
+            });
+            
+            arRenderer.render(arScene, arCamera);
+        }
+
+        function stopAR() {
+            if (arRenderer) {
+                arRenderer.dispose();
+                arRenderer = null;
+            }
+            arScene = null;
+            arCamera = null;
+            arObjects = [];
+        }
+
+        function exitAR() {
+            stopAR();
+            showScreen('home');
+        }
+
+        function selectOrgan(organ) {
+            createOrgan(organ);
+            
+            const organData = {
+                heart: { name: 'Jantung', icon: '🫀', desc: 'Organ vital yang memompa darah ke seluruh tubuh. Berdenyut 72x/menit.', bpm: '72 bpm' },
+                lungs: { name: 'Paru-paru', icon: '🫁', desc: 'Organ respirasi untuk pertukaran oksigen dan karbon dioksida.', bpm: '16 rpm' },
+                brain: { name: 'Otak', icon: '🧠', desc: 'Pusat kontrol saraf yang mengatur fungsi tubuh dan pikiran.', bpm: '100B neuron' },
+                stomach: { name: 'Lambung', icon: '🫃', desc: 'Organ pencernaan yang menguraikan makanan dengan asam lambung.', bpm: 'pH 1.5-3.5' },
+                liver: { name: 'Hati', icon: '🫁', desc: 'Organ terbesar yang memproduksi empedu dan detoksifikasi.', bpm: '500+ fungsi' }
+            };
+            
+            const data = organData[organ];
+            document.getElementById('ar-organ-name').textContent = data.name;
+            document.getElementById('ar-organ-icon').textContent = data.icon;
+            document.getElementById('ar-organ-desc').textContent = data.desc;
+            document.querySelector('#ar-info p.text-cyan-400').textContent = data.bpm;
+            
+            // Show info panel
+            document.getElementById('ar-info').classList.remove('translate-x-full');
+        }
+
+        function setLayer(layer) {
+            document.querySelectorAll('.organ-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.organ-btn').classList.add('active');
+            
+            const layerNames = {
+                skin: 'Kulit',
+                muscle: 'Otot',
+                organ: 'Organ Dalam',
+                bone: 'Tulang',
+                nerve: 'Sistem Saraf'
+            };
+            
+            document.getElementById('current-layer').textContent = layerNames[layer];
+            
+            // Change organ color based on layer
+            if (arObjects.length > 0 && arObjects[0].material) {
+                const colors = {
+                    skin: 0xffdbac,
+                    muscle: 0xdc143c,
+                    organ: 0xff1744,
+                    bone: 0xf5f5dc,
+                    nerve: 0xffff00
+                };
+                arObjects[0].material.color.setHex(colors[layer]);
+            }
+        }
+
+        // Scan Simulation
+        function simulateScan() {
+            const btn = event.target;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+            
+            setTimeout(() => {
+                showAR();
+                btn.innerHTML = 'Scan Manual';
+            }, 2000);
+        }
+
+        // Quiz Functions
+        const questions = [
+            {
+                q: "Struktur otot manakah yang ditunjukkan oleh penanda merah?",
+                options: ["Otot Deltoid (Bahu)", "Otot Biceps Brachii (Lengan Atas Depan)", "Otot Triceps Brachii (Lengan Atas Belakang)", "Otot Pectoralis Major (Dada)"],
+                correct: 1,
+                explanation: "Biceps brachii terletak di bagian depan lengan atas dan berfungsi untuk fleksi siku serta supinasi lengan bawah."
+            },
+            {
+                q: "Berapa jumlah tulang pada tubuh manusia dewasa?",
+                options: ["156 tulang", "206 tulang", "256 tulang", "306 tulang"],
+                correct: 1,
+                explanation: "Tubuh manusia dewasa memiliki 206 tulang, sementara bayi lahir dengan sekitar 270 tulang yang kemudian menyatu."
+            },
+            {
+                q: "Organ manakah yang bertanggung jawab untuk memompa darah?",
+                options: ["Paru-paru", "Hati", "Jantung", "Ginjal"],
+                correct: 2,
+                explanation: "Jantung adalah organ otot yang berfungsi memompa darah ke seluruh tubuh melalui sistem peredaran darah."
+            }
+        ];
+
+        function startQuizTimer() {
+            let time = 165; // 2:45
+            setInterval(() => {
+                if (time > 0) {
+                    time--;
+                    const mins = Math.floor(time / 60).toString().padStart(2, '0');
+                    const secs = (time % 60).toString().padStart(2, '0');
+                    const timerEl = document.getElementById('quiz-timer');
+                    if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+                }
+            }, 1000);
+        }
+
+        function selectAnswer(btn, option) {
+            const options = document.querySelectorAll('.quiz-option');
+            const currentQ = questions[currentQuestion];
+            const correctIndex = currentQ.correct;
+            const selectedIndex = option.charCodeAt(0) - 65;
+            
+            options.forEach((opt, index) => {
+                opt.style.pointerEvents = 'none';
+                if (index === correctIndex) {
+                    opt.classList.add('correct');
+                } else if (index === selectedIndex && index !== correctIndex) {
+                    opt.classList.add('wrong');
+                }
+            });
+            
+            if (selectedIndex === correctIndex) {
+                quizScore += 100;
+                document.getElementById('quiz-score').textContent = quizScore;
+                document.getElementById('quiz-streak').textContent = parseInt(document.getElementById('quiz-streak').textContent) + 1;
+            }
+            
+            document.getElementById('explanation-text').textContent = currentQ.explanation;
+            document.getElementById('explanation').classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            if (currentQuestion >= questions.length) {
+                currentQuestion = 0; // Loop back
+            }
+            
+            // Reset UI
+            document.querySelectorAll('.quiz-option').forEach(opt => {
+                opt.classList.remove('correct', 'wrong');
+                opt.style.pointerEvents = 'auto';
+            });
+            document.getElementById('explanation').classList.add('hidden');
+            document.getElementById('current-q').textContent = currentQuestion + 1;
+            
+            // Update progress bar
+            const progress = ((currentQuestion + 1) / questions.length) * 100;
+            document.querySelector('#screen-quiz .progress-bar').style.width = progress + '%';
+        }
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            if (arCamera && arRenderer) {
+                arCamera.aspect = window.innerWidth / window.innerHeight;
+                arCamera.updateProjectionMatrix();
+                arRenderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+    </script>
+</body>
+</html>
